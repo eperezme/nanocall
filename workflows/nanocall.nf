@@ -9,6 +9,8 @@ include { paramsSummaryMap       } from 'plugin/nf-schema'
 include { paramsSummaryMultiqc   } from '../subworkflows/nf-core/utils_nfcore_pipeline'
 include { softwareVersionsToYAML } from '../subworkflows/nf-core/utils_nfcore_pipeline'
 include { methodsDescriptionText } from '../subworkflows/local/utils_nfcore_nanocall_pipeline'
+include { TOULLIGQC              } from '../modules/nf-core/toulligqc/main'
+include { FAST5_TO_POD5          } from '../modules/local/pod5/fast5_to_pod5/main'       
 
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -24,6 +26,7 @@ workflow NANOCALL {
 
     ch_versions = Channel.empty()
     ch_multiqc_files = Channel.empty()
+
     //
     // MODULE: Run FastQC
     //
@@ -32,6 +35,14 @@ workflow NANOCALL {
     )
     ch_multiqc_files = ch_multiqc_files.mix(FASTQC.out.zip.collect{it[1]})
     ch_versions = ch_versions.mix(FASTQC.out.versions.first())
+
+
+    //
+    // MODULE: Run FAST5 to POD5 conversion
+    //
+    FAST5_TO_POD5 (
+        ch_samplesheet
+    )   
 
     //
     // Collate and save software versions
