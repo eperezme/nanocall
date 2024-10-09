@@ -8,7 +8,7 @@ process FAST5_TO_POD5 {
     // Specify the container image based on the workflow's container engine
     container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
         'https://depot.galaxyproject.org/singularity/pod5:0.3.15--pyhdfd78af_0' :
-        'biocontainers/pod5:0.3.15--pyhdfd78af_0' }"
+        'docker.io/eperezme/pod5:latest' }"
 
     // Define input channels: metadata and FAST5 reads
     input:
@@ -16,7 +16,7 @@ process FAST5_TO_POD5 {
 
     // Define output channels: POD5 files and versions file
     output:
-    tuple val(meta), path("*_converted.pod5") , emit: pod5
+    tuple val(meta), path("pod5/*_converted.pod5") , emit: pod5
     path "versions.yml"             , emit: versions
 
     // Conditional execution based on task.ext.when
