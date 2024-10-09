@@ -1,0 +1,16 @@
+bump_version: null
+lint: {}
+nf_core_version: 3.0.0
+org_path: null
+repository_type: pipeline
+template:
+  author: Eduard Perez Mendez
+  description: Converting, Basecalling and aligning of ONT data
+  force: true
+  is_nfcore: true
+  name: nanocall
+  org: nf-core
+  outdir: .
+  skip_features: []
+  version: 0.0.1dev
+update: null
