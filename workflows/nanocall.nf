@@ -39,6 +39,7 @@ include { DORADO_BASECALLER      } from '../modules/local/dorado_basecaller/main
 */
 
 workflow NANOCALL {
+    
 
     take:
     ch_samplesheet // channel: samplesheet read in from --input

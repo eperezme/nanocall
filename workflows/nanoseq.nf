@@ -31,10 +31,6 @@ def isOffline() {
     }
 }
 
-if (params.protocol != 'DNA' && params.protocol != 'cDNA' && params.protocol != 'directRNA') {
-    exit 1, "Invalid protocol option: ${params.protocol}. Valid options: 'DNA', 'cDNA', 'directRNA'"
-}
-
 if (!params.skip_demultiplexing) {
     if (!params.barcode_kit) {
         params.barcode_kit = 'Auto'
@@ -64,31 +60,6 @@ if (!params.skip_alignment) {
         exit 1, "Invalid protocol option: ${params.protocol}. Valid options: 'DNA', 'cDNA', 'directRNA'"
     }
 }
-
-if (params.call_variants) {
-    if (params.protocol != 'DNA') {
-        exit 1, "Invalid protocol option: ${params.protocol}. Valid options: 'DNA'"
-    }
-    if (!params.skip_vc && params.variant_caller != 'medaka' && params.variant_caller != 'deepvariant' && params.variant_caller != 'pepper_margin_deepvariant') {
-        exit 1, "Invalid variant caller option: ${params.variant_caller}. Valid options: 'medaka', 'deepvariant' or 'pepper_margin_deepvariant'"
-    }
-    if (!params.skip_sv && params.structural_variant_caller != 'sniffles' && params.structural_variant_caller != 'cutesv') {
-        exit 1, "Invalid structural variant caller option: ${params.structural_variant_caller}. Valid options: 'sniffles', 'cutesv"
-    }
-    if (!params.skip_vc && params.enable_conda && params.variant_caller != 'medaka') {
-        exit 1, "Conda environments cannot be used when using the deepvariant or pepper_margin_deepvariant tools. Valid options: 'docker', 'singularity'"
-    }
-}
-
-if (!params.skip_quantification) {
-    if (params.quantification_method != 'bambu' && params.quantification_method != 'stringtie2') {
-        exit 1, "Invalid transcript quantification option: ${params.quantification_method}. Valid options: 'bambu', 'stringtie2'"
-    }
-    if (params.protocol != 'cDNA' && params.protocol != 'directRNA') {
-        exit 1, "Invalid protocol option if performing quantification: ${params.protocol}. Valid options: 'cDNA', 'directRNA'"
-    }
-}
-
 ////////////////////////////////////////////////////
 /* --          CONFIG FILES                    -- */
 ////////////////////////////////////////////////////
