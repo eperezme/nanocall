@@ -1,5 +1,24 @@
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    VALIDATE INPUTS
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+*/
+
+def summary_params = NfcoreSchema.paramsSummaryMap(workflow, params)
+
+
+
+
+
+
+
+
+
+
+
+
+/*
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     IMPORT MODULES / SUBWORKFLOWS / FUNCTIONS
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 */
@@ -11,6 +30,7 @@ include { softwareVersionsToYAML } from '../subworkflows/nf-core/utils_nfcore_pi
 include { methodsDescriptionText } from '../subworkflows/local/utils_nfcore_nanocall_pipeline'
 include { TOULLIGQC              } from '../modules/nf-core/toulligqc/main'
 include { FAST5_TO_POD5          } from '../modules/local/pod5/fast5_to_pod5/main'       
+include { DORADO_BASECALLER      } from '../modules/local/dorado_basecaller/main'
 
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -42,7 +62,21 @@ workflow NANOCALL {
     //
     FAST5_TO_POD5 (
         ch_samplesheet
-    )   
+    )
+
+    // Collect all pod5 files into a single folder
+    pod5_folder = FAST5_TO_POD5.out.pod5.collectFile()
+
+    //
+    // MODULE: DORADO
+    //
+
+    DORADO_BASECALLER (
+        pod5_folder,
+        params.dorado_model
+    )
+
+
 
     //
     // Collate and save software versions
