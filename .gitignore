@@ -8,3 +8,4 @@ testing*
 *.pyc
 output/
 test_data/
+Data/
