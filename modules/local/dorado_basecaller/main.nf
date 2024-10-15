@@ -63,10 +63,10 @@ process DORADO_BASECALLER {
     # Run the dorado basecaller with the specified mode and arguments
     dorado ${mode} ${dorado_model} ${additional_args} pod5_dir/ ${emit_args}
 
-    // Create the summary file
+    # Create the summary file
     dorado summary $outfile > summary.tsv
 
-    // Create a versions.yml file with the dorado version information
+    # Create a versions.yml file with the dorado version information
     cat <<-END_VERSIONS > versions.yml
     "${task.process}":
         dorado: \$(echo \$(dorado --version 2>&1) | sed -r 's/.{81}//')
