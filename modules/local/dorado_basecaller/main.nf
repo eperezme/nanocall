@@ -12,12 +12,12 @@ process DORADO_BASECALLER {
 
     // Define input channels: all POD5 files
     input:
-    path pod5_dir
+    path (pod5_dir, stageAs: 'pod5_dir/*')
 
     // Define output channels: BAM files, FASTQ files, summary, and versions
     output:
-    path "*.bam", emit: bam
-    path "*.fastq.gz", emit: fastq
+    path "*.bam", emit: bam, optional: true
+    path "*.fastq.gz", emit: fastq, optional: true
     path "summary.tsv", emit: summary
     path "versions.yml", emit: versions
 
@@ -36,20 +36,22 @@ process DORADO_BASECALLER {
     def emit_args = ""
     if (params.error_correction == true || (params.emit_fastq == true && params.emit_bam == false)) {
         emit_args = "> basecall.fastq && gzip basecall.fastq"
-    } 
+        outfile = "basecall.fastq.gz"
+    }
     else if (params.emit_bam == true || params.modified_bases || (params.demultiplexing && params.kit)) {
         emit_args = "> basecall.bam"
+        outfile = "basecall.bam"
     }
 
     // Initialize additional_args based on parameters
     def additional_args = ""
     if (params.align) {
-       additional_args += " --reference ${params.ref_genome} --mm2-opt '-k ${params.kmer_size} -w ${params.win_size}'" 
+        additional_args += " --reference ${params.ref_genome} --mm2-opt '-k ${params.kmer_size} -w ${params.win_size}'"
     }
     // Handle trimming options
     if (params.demultiplexing && params.kit) {
         additional_args += " --no-trim"
-    } 
+    }
     else if (params.trim) {
         additional_args += " --trim ${params.trim}"
     }
@@ -58,20 +60,16 @@ process DORADO_BASECALLER {
     }
 
     """
-    # Create output directory if it doesn't exist
-    mkdir -p dorado_output
-
     # Run the dorado basecaller with the specified mode and arguments
-    dorado ${mode} ${dorado_model} ${additional_args} ${pod5_dir} ${emit_args}
+    dorado ${mode} ${dorado_model} ${additional_args} pod5_dir/ ${emit_args}
 
-    # Move output files to the main directory
-    mkdir -p dorado_output .
-    mv dorado_output/*.bam .
-    mv dorado_output/*.fastq.gz .
-    mv dorado_output/summary.tsv .
-    mv dorado_output/versions.yml .
+    // Create the summary file
+    dorado summary $outfile > summary.tsv
 
-    # Clean up
-    rm -rf dorado_output
+    // Create a versions.yml file with the dorado version information
+    cat <<-END_VERSIONS > versions.yml
+    "${task.process}":
+        dorado: \$(echo \$(dorado --version 2>&1) | sed -r 's/.{81}//')
+    END_VERSIONS
     """
 }

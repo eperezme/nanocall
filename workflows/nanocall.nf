@@ -19,7 +19,7 @@ def summary_params = paramsSummaryMap(params, workflow)
 include { FASTQC            } from '../modules/nf-core/fastqc/main'
 include { MULTIQC           } from '../modules/nf-core/multiqc/main'
 include { TOULLIGQC         } from '../modules/nf-core/toulligqc/main'
-include { FAST5_TO_POD5     } from '../modules/local/pod5/fast5_to_pod5/main'       
+include { FAST5_TO_POD5     } from '../modules/local/pod5/fast5_to_pod5/main'
 include { DORADO_BASECALLER } from '../modules/local/dorado_basecaller/main'
 
 /*
@@ -35,9 +35,9 @@ workflow NANOCALL {
     main:
     // Define the fast5 channel by reading all FAST5 files in the input directory
 Channel.fromPath("${params.input_path}/*.fast5", checkIfExists: true)
-    .map { path -> 
+    .map { path ->
         def id = path.getBaseName()
-        tuple(id, path) 
+        tuple(id, path)
     }
     .set { ch_fast5_files }
 
@@ -53,9 +53,7 @@ Channel.fromPath("${params.input_path}/*.fast5", checkIfExists: true)
     )
 
     // Collect all POD5 files into a single directory
-    FAST5_TO_POD5.out.pod5.collectFile(
-        storeDir: "${params.outdir}/pod5_files" // Directory where all POD5 files are collected
-    ).set { ch_pod5_folder }
+    FAST5_TO_POD5.out.pod5.collect().set { ch_pod5_folder }
     ch_versions = ch_versions.mix(FAST5_TO_POD5.out.versions)
     // ch_multiqc_files = ch_multiqc_files.mix(FAST5_TO_POD5.out.pod5)
 
@@ -102,7 +100,7 @@ Channel.fromPath("${params.input_path}/*.fast5", checkIfExists: true)
     ch_workflow_summary = Channel.value(paramsSummaryMultiqc(summary_params))
     ch_multiqc_files = ch_multiqc_files.mix(
         ch_workflow_summary.collectFile(name: 'workflow_summary_mqc.yaml'))
-    
+
     ch_multiqc_custom_methods_description = params.multiqc_methods_description ?
         file(params.multiqc_methods_description, checkIfExists: true) :
         file("$projectDir/assets/methods_description_template.yml", checkIfExists: true)

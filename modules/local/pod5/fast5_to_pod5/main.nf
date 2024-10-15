@@ -16,7 +16,7 @@ process FAST5_TO_POD5 {
 
     // Define output channels: POD5 file and versions file
     output:
-    path("pod5/${meta}_converted.pod5"), emit: pod5
+    path "pod5/${meta}_converted.pod5", emit: pod5
     path "versions_${meta}.yml", emit: versions
 
     // Conditional execution based on task.ext.when
