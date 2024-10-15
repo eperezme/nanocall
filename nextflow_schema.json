@@ -235,5 +235,53 @@
         {
             "$ref": "#/$defs/generic_options"
         }
-    ]
+    ],
+    "properties": {
+        "input_path": {
+            "type": "string"
+        },
+        "emit_fastq": {
+            "type": "boolean",
+            "default": true
+        },
+        "emit_bam": {
+            "type": "boolean"
+        },
+        "dorado_model": {
+            "type": "string",
+            "default": "hac"
+        },
+        "duplex": {
+            "type": "boolean"
+        },
+        "trim": {
+            "type": "string"
+        },
+        "modified_bases": {
+            "type": "string"
+        },
+        "reference_genome": {
+            "type": "string"
+        },
+        "demultiplexing": {
+            "type": "boolean"
+        },
+        "kit": {
+            "type": "string"
+        },
+        "error_correction": {
+            "type": "boolean"
+        },
+        "ref_genome": {
+            "type": "string"
+        },
+        "kmer_size": {
+            "type": "integer",
+            "default": 15
+        },
+        "win_size": {
+            "type": "integer",
+            "default": 10
+        }
+    }
 }

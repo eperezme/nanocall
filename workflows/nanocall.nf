@@ -3,34 +3,24 @@
     VALIDATE INPUTS
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 */
+include { paramsSummaryMap       } from 'plugin/nf-schema'
+include { paramsSummaryMultiqc   } from '../subworkflows/nf-core/utils_nfcore_pipeline'
+include { softwareVersionsToYAML } from '../subworkflows/nf-core/utils_nfcore_pipeline'
+include { methodsDescriptionText } from '../subworkflows/local/utils_nfcore_nanocall_pipeline'
 
-def summary_params = NfcoreSchema.paramsSummaryMap(workflow, params)
-
-
-
-
-
-
-
-
-
-
-
+// Initialize summary parameters
+def summary_params = paramsSummaryMap(params, workflow)
 
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     IMPORT MODULES / SUBWORKFLOWS / FUNCTIONS
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 */
-include { FASTQC                 } from '../modules/nf-core/fastqc/main'
-include { MULTIQC                } from '../modules/nf-core/multiqc/main'
-include { paramsSummaryMap       } from 'plugin/nf-schema'
-include { paramsSummaryMultiqc   } from '../subworkflows/nf-core/utils_nfcore_pipeline'
-include { softwareVersionsToYAML } from '../subworkflows/nf-core/utils_nfcore_pipeline'
-include { methodsDescriptionText } from '../subworkflows/local/utils_nfcore_nanocall_pipeline'
-include { TOULLIGQC              } from '../modules/nf-core/toulligqc/main'
-include { FAST5_TO_POD5          } from '../modules/local/pod5/fast5_to_pod5/main'       
-include { DORADO_BASECALLER      } from '../modules/local/dorado_basecaller/main'
+include { FASTQC            } from '../modules/nf-core/fastqc/main'
+include { MULTIQC           } from '../modules/nf-core/multiqc/main'
+include { TOULLIGQC         } from '../modules/nf-core/toulligqc/main'
+include { FAST5_TO_POD5     } from '../modules/local/pod5/fast5_to_pod5/main'       
+include { DORADO_BASECALLER } from '../modules/local/dorado_basecaller/main'
 
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -39,45 +29,51 @@ include { DORADO_BASECALLER      } from '../modules/local/dorado_basecaller/main
 */
 
 workflow NANOCALL {
-    
+    // Declare the input channel: tuple of (id, fast5_file)
+    // Removed 'input:' block to make the workflow self-contained
 
-    take:
-    ch_samplesheet // channel: samplesheet read in from --input
     main:
+    // Define the fast5 channel by reading all FAST5 files in the input directory
+Channel.fromPath("${params.input_path}/*.fast5", checkIfExists: true)
+    .map { path -> 
+        def id = path.getBaseName()
+        tuple(id, path) 
+    }
+    .set { ch_fast5_files }
 
+    // Initialize channels for versions and MultiQC
     ch_versions = Channel.empty()
     ch_multiqc_files = Channel.empty()
-
-    //
-    // MODULE: Run FastQC
-    //
-    FASTQC (
-        ch_samplesheet
-    )
-    ch_multiqc_files = ch_multiqc_files.mix(FASTQC.out.zip.collect{it[1]})
-    ch_versions = ch_versions.mix(FASTQC.out.versions.first())
-
 
     //
     // MODULE: Run FAST5 to POD5 conversion
     //
     FAST5_TO_POD5 (
-        ch_samplesheet
+        ch_fast5_files
     )
 
-    // Collect all pod5 files into a single folder
-    pod5_folder = FAST5_TO_POD5.out.pod5.collectFile()
+    // Collect all POD5 files into a single directory
+    FAST5_TO_POD5.out.pod5.collectFile(
+        storeDir: "${params.outdir}/pod5_files" // Directory where all POD5 files are collected
+    ).set { ch_pod5_folder }
+    ch_versions = ch_versions.mix(FAST5_TO_POD5.out.versions)
+    // ch_multiqc_files = ch_multiqc_files.mix(FAST5_TO_POD5.out.pod5)
 
     //
-    // MODULE: DORADO
+    // MODULE: Run Dorado basecaller
     //
-
-    DORADO_BASECALLER (
-        pod5_folder,
-        params.dorado_model
-    )
+    DORADO_BASECALLER (ch_pod5_folder)
 
 
+    //
+    // MODULE: Run FastQC
+    //
+    // Uncomment and adjust if FastQC is needed
+    /*
+    FASTQC(id, FAST5_TO_POD5.out.pod5)
+    ch_multiqc_files = ch_multiqc_files.mix(FASTQC.out.zip.collect{ it[1] })
+    ch_versions = ch_versions.mix(FASTQC.out.versions.first())
+    */
 
     //
     // Collate and save software versions
@@ -85,11 +81,10 @@ workflow NANOCALL {
     softwareVersionsToYAML(ch_versions)
         .collectFile(
             storeDir: "${params.outdir}/pipeline_info",
-            name: 'nf_core_'  + 'pipeline_software_' +  'mqc_'  + 'versions.yml',
+            name: 'nf_core_pipeline_software_mqc_versions.yml',
             sort: true,
             newLine: true
         ).set { ch_collated_versions }
-
 
     //
     // MODULE: MultiQC
@@ -103,9 +98,7 @@ workflow NANOCALL {
         Channel.fromPath(params.multiqc_logo, checkIfExists: true) :
         Channel.empty()
 
-    
-    summary_params      = paramsSummaryMap(
-        workflow, parameters_schema: "nextflow_schema.json")
+    summary_params      = paramsSummaryMap(params, workflow) // Corrected function call
     ch_workflow_summary = Channel.value(paramsSummaryMultiqc(summary_params))
     ch_multiqc_files = ch_multiqc_files.mix(
         ch_workflow_summary.collectFile(name: 'workflow_summary_mqc.yaml'))
@@ -133,9 +126,9 @@ workflow NANOCALL {
         []
     )
 
-    emit:multiqc_report = MULTIQC.out.report.toList() // channel: /path/to/multiqc_report.html
+    emit:
+    multiqc_report = MULTIQC.out.report.toList() // channel: /path/to/multiqc_report.html
     versions       = ch_versions                 // channel: [ path(versions.yml) ]
-
 }
 
 /*

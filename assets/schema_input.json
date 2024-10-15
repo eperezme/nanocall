@@ -13,21 +13,20 @@
                 "errorMessage": "Sample name must be provided and cannot contain spaces",
                 "meta": ["id"]
             },
-            "fastq_1": {
+            "flowcell_id": {
                 "type": "string",
-                "format": "file-path",
-                "exists": true,
-                "pattern": "^\\S+\\.(f(ast)?q\\.gz|fast5|pod5)$",
-                "errorMessage": "FastQ file for reads 1 must be provided, cannot contain spaces and must have extension '.fq.gz', '.fastq.gz', '.fast5', or '.pod5'"
+                "errorMessage": "Flowcell ID must be provided"
             },
-            "fastq_2": {
+            "barcode": {
+                "type": "integer",
+                "errorMessage": "Barcode must be an integer"
+            },
+            "genome": {
                 "type": "string",
                 "format": "file-path",
-                "exists": true,
-                "pattern": "^\\S+\\.(f(ast)?q\\.gz|fast5|pod5)$",
-                "errorMessage": "FastQ file for reads 2 cannot contain spaces and must have extension '.fq.gz', '.fastq.gz', '.fast5', or '.pod5'"
+                "errorMessage": "Genome assembly or path must be provided"
             }
         },
-        "required": ["sample", "fastq_1"]
+        "required": ["sample", "genome"]
     }
 }

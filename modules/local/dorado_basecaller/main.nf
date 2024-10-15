@@ -1,58 +1,77 @@
 process DORADO_BASECALLER {
-    tag "$meta.id"
-    label 'process_medium'
+    tag "dorado_basecaller"
+    label 'process_high'
 
-    // Specify the container to use for this process
-    container "docker.io/eperezme/dorado:full"
+    // Define the environment using Conda
+    conda "${moduleDir}/environment.yml"
 
+    // Specify the container image based on the workflow's container engine
+    container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
+        'https://depot.galaxyproject.org/singularity/YOUR-TOOL-HERE' :
+        'docker.io/eperezme/dorado:full' }"
+
+    // Define input channels: all POD5 files
     input:
-    tuple val(meta), path(pod5_path)  // Input tuple containing metadata and path to pod5 file
-    val dorado_model                  // Input value for the dorado model
+    path pod5_dir
 
+    // Define output channels: BAM files, FASTQ files, summary, and versions
     output:
-    tuple val(meta), path("basecall*")   , emit: dorado_out  // Output tuple containing metadata and path to basecall files
-    path "versions.yml"                  , emit: versions    // Output path for versions.yml file
+    path "*.bam", emit: bam
+    path "*.fastq.gz", emit: fastq
+    path "summary.tsv", emit: summary
+    path "versions.yml", emit: versions
 
+    // Conditional execution based on task.ext.when
+    when:
+    task.ext.when == null || task.ext.when
+
+    // Script section to perform the basecalling
     script:
-    // Determine the mode based on the duplex parameter
+    // Handle parameters and arguments
+    def args = task.ext.args ?: ''
     def mode = (params.duplex == true) ? "duplex" : "basecaller"
+    def dorado_model = params.modified_bases ? "${params.model},${params.modified_bases}" : "${params.model}"
 
     // Initialize emit_args based on parameters
     def emit_args = ""
-    if (params.error_correction == true || params.emit_fastq == true) {
+    if (params.error_correction == true || (params.emit_fastq == true && params.emit_bam == false)) {
         emit_args = "> basecall.fastq && gzip basecall.fastq"
     } 
-    // Emit bam if emit_bam is true or modified_bases is true
-    // Demultiplexing with kit name, output will be in bam
-    elif (params.emit_bam == true || params.modified_bases || (params.demultiplexing && params.kit_name)) {
+    else if (params.emit_bam == true || params.modified_bases || (params.demultiplexing && params.kit)) {
         emit_args = "> basecall.bam"
     }
 
     // Initialize additional_args based on parameters
     def additional_args = ""
     if (params.align) {
-       additional_args += " --reference $params.ref_genome --mm2-opt '-k $params.kmer_size -w $params.win_size'" 
+       additional_args += " --reference ${params.ref_genome} --mm2-opt '-k ${params.kmer_size} -w ${params.win_size}'" 
     }
-
     // Handle trimming options
     if (params.demultiplexing && params.kit) {
         additional_args += " --no-trim"
     } 
-    elif (params.trim) {
-        additional_args += " --trim $params.trim"
+    else if (params.trim) {
+        additional_args += " --trim ${params.trim}"
     }
     if (params.kit) {
-        additional_args += " --kit-name $params.kit"
+        additional_args += " --kit-name ${params.kit}"
     }
 
     """
-    // Run the dorado basecaller with the specified mode and arguments
-    dorado $mode $dorado_model $additional_args $pod5_path $emit_args 
+    # Create output directory if it doesn't exist
+    mkdir -p dorado_output
 
-    // Create a versions.yml file with the dorado version information
-    cat <<-END_VERSIONS > versions.yml
-    "${task.process}":
-        dorado: \$(echo \$(dorado --version 2>&1) | sed -r 's/.{81}//')
-    END_VERSIONS
+    # Run the dorado basecaller with the specified mode and arguments
+    dorado ${mode} ${dorado_model} ${additional_args} ${pod5_dir} ${emit_args}
+
+    # Move output files to the main directory
+    mkdir -p dorado_output .
+    mv dorado_output/*.bam .
+    mv dorado_output/*.fastq.gz .
+    mv dorado_output/summary.tsv .
+    mv dorado_output/versions.yml .
+
+    # Clean up
+    rm -rf dorado_output
     """
 }

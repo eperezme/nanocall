@@ -1,4 +1,5 @@
 #!/usr/bin/env nextflow
+nextflow.enable.dsl=2
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     nf-core/nanocall
@@ -16,7 +17,6 @@
 */
 
 include { NANOCALL  } from './workflows/nanocall'
-include { PIPELINE_INITIALISATION } from './subworkflows/local/utils_nfcore_nanocall_pipeline'
 include { PIPELINE_COMPLETION     } from './subworkflows/local/utils_nfcore_nanocall_pipeline'
 include { getGenomeAttribute      } from './subworkflows/local/utils_nfcore_nanocall_pipeline'
 
@@ -42,17 +42,12 @@ params.fasta = getGenomeAttribute('fasta')
 //
 workflow NFCORE_NANOCALL {
 
-    take:
-    samplesheet // channel: samplesheet read in from --input
-
     main:
 
     //
     // WORKFLOW: Run pipeline
     //
-    NANOCALL (
-        samplesheet
-    )
+    NANOCALL ()
     emit:
     multiqc_report = NANOCALL.out.multiqc_report // channel: /path/to/multiqc_report.html
 }
@@ -68,20 +63,11 @@ workflow {
     //
     // SUBWORKFLOW: Run initialisation tasks
     //
-    PIPELINE_INITIALISATION (
-        params.version,
-        params.validate_params,
-        params.monochrome_logs,
-        args,
-        params.outdir,
-        params.input
-    )
     
     //
     // WORKFLOW: Run main workflow
     //
     NFCORE_NANOCALL (
-        PIPELINE_INITIALISATION.out.samplesheet
     )
     //
     // SUBWORKFLOW: Run completion tasks

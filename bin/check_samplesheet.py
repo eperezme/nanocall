@@ -49,9 +49,9 @@ def read_head(handle, num_lines=10):
 def check_samplesheet(file_in, updated_path, file_out):
     """
     This function checks that the samplesheet follows the following structure:
-    group,replicate,barcode,input_file
-    MCF7,1,,MCF7_directcDNA_replicate1.fastq.gz
-    MCF7,2,,MCF7_directcDNA_replicate3.fastq.gz
+    sample,flowcell_id,barcode,genome
+    MCF7,FLO-MIN106,1,ASM584v2
+    MCF8,FLO-MIN106,2,ASM584v2
     """
 
     input_extensions = []
@@ -59,7 +59,7 @@ def check_samplesheet(file_in, updated_path, file_out):
     with open(file_in, "r") as fin:
         ## Check header
         MIN_COLS = 3
-        HEADER = ["group", "replicate", "barcode", "input_file"]
+        HEADER = ["sample", "flowcell_id", "barcode", "genome"]
         header = fin.readline().strip().split(",")
         if header[: len(HEADER)] != HEADER:
             print("ERROR: Please check samplesheet header -> {} != {}".format(",".join(header), ",".join(HEADER)))
@@ -77,21 +77,21 @@ def check_samplesheet(file_in, updated_path, file_out):
             if num_cols < MIN_COLS:
                 print_error("Invalid number of populated columns (minimum = {})!".format(MIN_COLS), "Line", line)
 
-            ## Check group name entries
-            group, replicate, barcode, input_file = lspl[: len(HEADER)]
-            if group:
-                if group.find(" ") != -1:
-                    print_error("Group entry contains spaces!", "Line", line)
+            ## Check sample name entries
+            sample, flowcell, barcode, genome = lspl[: len(HEADER)]
+            if sample:
+                if sample.find(" ") != -1:
+                    print_error("Sample entry contains spaces!", "Line", line)
             else:
-                print_error("Group entry has not been specified!", "Line", line)
+                print_error("Sample entry has not been specified!", "Line", line)
 
-            ## Check replicate entry is integer
-            if replicate:
-                if not replicate.isdigit():
-                    print_error("Replicate id not an integer!", "Line", line)
+            ## Check flowcell entry is integer
+            if flowcell:
+                if not flowcell.find(" ") != -1:
+                    print_error("Flowcell ID contains spaces!", "Line", line)
             else:
-                print_error("Replicate id not specified!", "Line", line)
-            replicate = int(replicate)
+                print_error("Flowcell ID not specified!", "Line", line)
+            flowcell = str(flowcell)
 
             ## Check barcode entry
             if barcode:
@@ -100,78 +100,81 @@ def check_samplesheet(file_in, updated_path, file_out):
                 else:
                     barcode = "barcode%s" % (barcode.zfill(2))
 
-            ## Check input file extension
-            fast5 = ""
-            if input_file:
-                if input_file.find(" ") != -1:
-                    print_error("Input file contains spaces!", "Line", line)
-                if input_file.endswith(".fastq.gz"):
+            ## Check genome entry
+            if genome:
+                if genome.find(" ") != -1:
+                    print_error("Genome entry contains spaces!", "Line", line)
+                if genome.endswith(".fastq.gz"):
                     input_extensions.append("*.fastq.gz")
-                elif input_file.endswith(".fq.gz"):
+                elif genome.endswith(".fq.gz"):
                     input_extensions.append("*.fq.gz")
-                elif input_file.endswith(".bam"):
-                    input_extensions.append("*.bam")
-                else:
-                    if updated_path != "not_changed":
-                        input_file = "/".join([updated_path, input_file.split("/")[-1]])
-                    list_dir = os.listdir(input_file)
-                    fast5 = input_file
-                    if not (all(fname.endswith(".fast5") for fname in list_dir)) and not (all(fname.endswith(".pod5") for fname in list_dir)):
-                        if "fast5" in list_dir and "fastq" in list_dir:
-                            fast5 = input_file + "/fast5"
-                            ## CHECK FAST5 DIRECTORY
-                            if not (all(fname.endswith(".fast5") for fname in os.listdir(fast5))):
-                                print_error("fast5 directory contains non-fast5 files.")
-                            ## CHECK PROVIDED BASECALLED FASTQ
-                            fastq_path = input_file + "/fastq"
-                            basecalled_fastq = [
-                                fn for fn in os.listdir(fastq_path) if fn.endswith(".fastq.gz") or fn.endswith(".fq.gz")
-                            ]
-                            if len(basecalled_fastq) != 1:
-                                print_error("Please input one basecalled fastq per sample.")
-                            else:
-                                input_file = fastq_path + "/" + basecalled_fastq[0]
-                                if not basecalled_fastq[0].endswith(".fastq.gz"):
-                                    if not basecalled_fastq[0].endswith(".fq.gz"):
-                                        print_error('basecalled fastq input does not end with ".fastq.gz" or ".fq.gz"')
-                        else:
-                            print_error(
-                                '{input_file} path does not end with ".fastq.gz", ".fq.gz", or ".bam" and is not an existing directory with correct fast5 and/or fastq inputs.'
-                            )
+                elif genome.endswith("*.mmi"):
+                    input_extensions.append("*.mmi")
+            
+            ## Check input file extension
+            # fast5 = ""
+            # if genome:
+            #     if genome.find(" ") != -1:
+            #         print_error("Input file contains spaces!", "Line", line)
+            #     if genome.endswith(".fastq.gz"):
+            #         input_extensions.append("*.fastq.gz")
+            #     elif genome.endswith(".fq.gz"):
+            #         input_extensions.append("*.fq.gz")
+            #     elif genome.endswith(".bam"):
+            #         input_extensions.append("*.bam")
+            #     else:
+            #         if updated_path != "not_changed":
+            #             genome = "/".join([updated_path, genome.split("/")[-1]])
+            #         list_dir = os.listdir(genome)
+            #         fast5 = genome
+            #         if not (all(fname.endswith(".fast5") for fname in list_dir)) and not (all(fname.endswith(".pod5") for fname in list_dir)):
+            #             if "fast5" in list_dir and "fastq" in list_dir:
+            #                 fast5 = genome + "/fast5"
+            #                 ## CHECK FAST5 DIRECTORY
+            #                 if not (all(fname.endswith(".fast5") for fname in os.listdir(fast5))):
+            #                     print_error("fast5 directory contains non-fast5 files.")
+            #                 ## CHECK PROVIDED BASECALLED FASTQ
+            #                 fastq_path = genome + "/fastq"
+            #                 basecalled_fastq = [
+            #                     fn for fn in os.listdir(fastq_path) if fn.endswith(".fastq.gz") or fn.endswith(".fq.gz")
+            #                 ]
+            #                 if len(basecalled_fastq) != 1:
+            #                     print_error("Please input one basecalled fastq per sample.")
+            #                 else:
+            #                     genome = fastq_path + "/" + basecalled_fastq[0]
+            #                     if not basecalled_fastq[0].endswith(".fastq.gz"):
+            #                         if not basecalled_fastq[0].endswith(".fq.gz"):
+            #                             print_error('basecalled fastq input does not end with ".fastq.gz" or ".fq.gz"')
+            #             else:
+            #                 print_error(
+            #                     '{genome} path does not end with ".fastq.gz", ".fq.gz", or ".bam" and is not an existing directory with correct fast5 and/or fastq inputs.'
+            #                 )
 
-            ## Create sample mapping dictionary = {group: {replicate : [ barcode, input_file, fast5 ]}}
-            sample_info = [barcode, input_file, fast5]
-            if group not in sample_info_dict:
-                sample_info_dict[group] = {}
-            if replicate not in sample_info_dict[group]:
-                sample_info_dict[group][replicate] = sample_info
+            ## Create sample mapping dictionary = {sample: {flowcell : [ barcode, genome ]}}
+            sample_info = [barcode, genome]
+            if sample not in sample_info_dict:
+                sample_info_dict[sample] = {}
+            if flowcell not in sample_info_dict[sample]:
+                sample_info_dict[sample][flowcell] = sample_info
             else:
-                print_error("Same replicate id provided multiple times!", "Line", line)
-
-    ## Check all input files have the same extension
-    if len(set(input_extensions)) > 1:
-        print_error(
-            "All input files must have the same extension!",
-            "Multiple extensions found",
-            ", ".join(set(input_extensions)),
-        )
+                print_error("Same flowcell id provided multiple times!", "Line", line)
 
     ## Write validated samplesheet with appropriate columns
     if len(sample_info_dict) > 0:
         out_dir = os.path.dirname(file_out)
         make_dir(out_dir)
         with open(file_out, "w") as fout:
-            fout.write(",".join(["sample", "barcode", "reads", "fast5"]) + "\n")
+            fout.write(",".join(["sample", "barcode", "reads"]) + "\n")
             for sample in sorted(sample_info_dict.keys()):
-                ## Check that replicate ids are in format 1..<NUM_REPS>
+                ## Check that flowcell ids are in format 1..<NUM_REPS>
                 uniq_rep_ids = set(sample_info_dict[sample].keys())
                 if len(uniq_rep_ids) != max(uniq_rep_ids):
-                    print_error("Replicate ids must start with 1..<num_replicates>!", "Group", sample)
+                    print_error("flowcell ids must start with 1..<num_flowcells>!", "sample", sample)
 
                 ### Write to file
-                for replicate in sorted(sample_info_dict[sample].keys()):
-                    sample_id = "{}_R{}".format(sample, replicate)
-                    fout.write(",".join([sample_id] + sample_info_dict[sample][replicate]) + "\n")
+                for flowcell in sorted(sample_info_dict[sample].keys()):
+                    sample_id = "{}_R{}".format(sample, flowcell)
+                    fout.write(",".join([sample_id] + sample_info_dict[sample][flowcell]) + "\n")
 
 
 def main(args=None):
