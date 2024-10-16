@@ -20,7 +20,7 @@ include { FASTQC            } from '../modules/nf-core/fastqc/main'
 include { MULTIQC           } from '../modules/nf-core/multiqc/main'
 include { TOULLIGQC         } from '../modules/nf-core/toulligqc/main'
 include { FAST5_TO_POD5     } from '../modules/local/pod5/fast5_to_pod5/main'
-include { DORADO_BASECALLER } from '../modules/local/dorado_basecaller/main'
+include { DORADO_BASECALLER } from '../modules/local/dorado/dorado_basecaller/main'
 
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
