@@ -1,22 +1,23 @@
 process TOULLIGQC {
     label 'process_low'
-    tag "$meta.id"
+    tag "TOULLIGQC"
 
     conda "${moduleDir}/environment.yml"
     container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
-        'https://depot.galaxyproject.org/singularity/toulligqc:2.5.6--pyhdfd78af_0':
-        'biocontainers/toulligqc:2.5.6--pyhdfd78af_0' }"
+        'https://depot.galaxyproject.org/singularity/toulligqc:2.7.1--pyhdfd78af_0':
+        'biocontainers/toulligqc:2.7.1--pyhdfd78af_0' }"
 
     input:
-
-    tuple val(meta), path(ontfile)
+    path(summary)
+    path(pod5_dir, stageAs: 'pod5_dir/*')
+    path(ontfile)
 
 
     output:
-    tuple val(meta), path("*/*.data")                   , emit: report_data
-    tuple val(meta), path("*/*.html")                   , emit: report_html, optional: true
-    tuple val(meta), path("*/images/*.html")            , emit: plots_html
-    tuple val(meta), path("*/images/plotly.min.js")     , emit: plotly_js
+    path("*/*.data")                   , emit: report_data
+    path("*/*.html")                   , emit: report_html, optional: true
+    path("*/images/*.html")            , emit: plots_html
+    path("*/images/plotly.min.js")     , emit: plotly_js
     path "versions.yml"                                 , emit: versions
 
     when:
@@ -24,7 +25,7 @@ process TOULLIGQC {
 
     script:
     def args = task.ext.args ?: ''
-    def prefix = task.ext.prefix ?: "${meta.id}"
+    // def prefix = task.ext.prefix ?: "${id}"
 
     def input_file = ("$ontfile".endsWith(".fastq") || "$ontfile".endsWith(".fastq.gz") || "$ontfile".endsWith(".fq") || "$ontfile".endsWith(".fq.gz")) ? "--fastq ${ontfile}" :
         ("$ontfile".endsWith(".txt") || "$ontfile".endsWith(".txt.gz")) ? "--sequencing-summary-source ${ontfile}" :
@@ -33,7 +34,9 @@ process TOULLIGQC {
     """
     toulligqc \\
         $input_file \\
-        --output-directory ${prefix} \\
+        -a ${summary} \\
+        -p pod5_dir/ \\
+        --output-directory QC\\
         $args
 
     cat <<-END_VERSIONS > versions.yml
@@ -44,7 +47,7 @@ process TOULLIGQC {
 
     stub:
     def args = task.ext.args ?: ''
-    def prefix = task.ext.prefix ?: "${meta.id}"
+    // def prefix = task.ext.prefix ?: "${meta.id}"
     """
     mkdir ${prefix}
     mkdir ${prefix}/images

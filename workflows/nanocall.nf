@@ -61,8 +61,19 @@ Channel.fromPath("${params.input_path}/*.fast5", checkIfExists: true)
     // MODULE: Run Dorado basecaller
     //
     DORADO_BASECALLER (ch_pod5_folder)
+    DORADO_BASECALLER.out.bam.collectFile(name: 'basecall.bam').set { ch_bam_files }
+    DORADO_BASECALLER.out.fastq.collectFile(name: 'basecall.fastq.gz').set { ch_fastq_files }
+    DORADO_BASECALLER.out.summary.collectFile(name: 'summary.tsv').set { ch_summary_files }
+    ch_versions = ch_versions.mix(DORADO_BASECALLER.out.versions)
 
-
+    //
+    // MODULE: ToulligQC
+    //
+    TOULLIGQC (
+        ch_summary_files,
+        ch_pod5_folder,
+        ch_bam_files
+    )
     //
     // MODULE: Run FastQC
     //
