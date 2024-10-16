@@ -29,14 +29,22 @@ process DORADO_BASECALLER {
     script:
     // Handle parameters and arguments
     def args = task.ext.args ?: ''
+
+    // Define the basecalling method
     def mode = (params.duplex == true) ? "duplex" : "basecaller"
+
+    // Define the model structure to be passed to dorado
     def dorado_model = params.modified_bases ? "${params.model},${params.modified_bases}" : "${params.model}"
 
-    // Initialize emit_args based on parameters
+    // Initialize emit_args and additional_args based on parameters
     def emit_args = ""
+    def additional_args = ""
+
+
     if (params.error_correction == true || (params.emit_fastq == true && params.emit_bam == false)) {
-        emit_args = "> basecall.fastq && gzip basecall.fastq"
-        outfile = "basecall.fastq.gz"
+        emit_args = "> basecall.fastq"
+        outfile = "basecall.fastq"
+        additional_args += " --emit-fastq"
     }
     else if (params.emit_bam == true || params.modified_bases || (params.demultiplexing && params.kit)) {
         emit_args = "> basecall.bam"
@@ -44,19 +52,18 @@ process DORADO_BASECALLER {
     }
 
     // Initialize additional_args based on parameters
-    def additional_args = ""
     if (params.align) {
-        additional_args += " --reference ${params.ref_genome} --mm2-opt '-k ${params.kmer_size} -w ${params.win_size}'"
+        additional_args += "--reference ${params.ref_genome} --mm2-opts '-k ${params.kmer_size} -w ${params.win_size} '"
     }
     // Handle trimming options
     if (params.demultiplexing && params.kit) {
-        additional_args += " --no-trim"
+        additional_args += "--no-trim "
     }
     else if (params.trim) {
-        additional_args += " --trim ${params.trim}"
+        additional_args += "--trim ${params.trim} "
     }
     if (params.kit) {
-        additional_args += " --kit-name ${params.kit}"
+        additional_args += "--kit-name ${params.kit} "
     }
 
     """
@@ -65,6 +72,11 @@ process DORADO_BASECALLER {
 
     # Create the summary file
     dorado summary $outfile > summary.tsv
+
+    # gzip the fastq file if it exists
+    if [ -f basecall.fastq ]; then
+        gzip -k basecall.fastq
+    fi
 
     # Create a versions.yml file with the dorado version information
     cat <<-END_VERSIONS > versions.yml

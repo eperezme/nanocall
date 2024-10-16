@@ -1,0 +1,54 @@
+nextflow_pipeline {
+
+    name "Test Workflow main.nf"
+    script "main.nf"
+
+    tag "dorado"
+    tag "pipeline"
+
+    test("Dorado minimall BAM Basecall") {
+        when {
+            params {
+                emit_bam = true
+                model = "fast"
+                demultiplexing = false
+                trim = null
+                modified_bases = null
+                error_correction = false
+                align = false
+                outdir = "$outputDir"
+            }
+        }
+
+        then {
+            assertAll(
+                { assert workflow.success },
+                { assert snapshot(
+                    path("$outputDir/dorado/basecall.bam"),
+                    path("$outputDir/dorado/summary.tsv"),
+                    path("$outputDir/dorado/versions.yml"),
+                    path("$outputDir/fast5/").list(),
+                    path("$outputDir/fast5/pod5/").list() }
+            )
+        }
+    }
+
+
+    test("Dorado with alignment") {
+        when {
+            params {
+                emit_bam = true
+                model = "fast"
+                demultiplexing = false
+                trim = null
+                modified_bases = null
+                error_correction = false
+                align = true
+                ref_genome = "/zpool_1TB/home/eduard.perez/Genomes/ecoli/ASM584v2/GCF_000005845.2_ASM584v2_genomic.fna"
+                kmer_size = 15
+                win_size = 10
+                outdir = "$outputDir"
+            }
+        }
+    }
+}
