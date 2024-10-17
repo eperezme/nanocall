@@ -1,6 +1,6 @@
-sample,flowcell_id,barcode,genome
-sample1,FLO-MIN106,1,/zpool_1TB/home/eduard.perez/Genomes/ecoli/ASM584v2/GCF_000005845.2_ASM584v2_genomic.fna
-sample2,FLO-MIN106,2,/zpool_1TB/home/eduard.perez/Genomes/ecoli/ASM584v2/GCF_000005845.2_ASM584v2_genomic.fna
-sample3,FLO-MIN106,3,/zpool_1TB/home/eduard.perez/Genomes/ecoli/ASM584v2/GCF_000005845.2_ASM584v2_genomic.fna
-sample4,FLO-MIN106,4,/zpool_1TB/home/eduard.perez/Genomes/ecoli/ASM584v2/GCF_000005845.2_ASM584v2_genomic.fna
-sample5,FLO-MIN106,5,/zpool_1TB/home/eduard.perez/Genomes/ecoli/ASM584v2/GCF_000005845.2_ASM584v2_genomic.fna
+sample  ,barcode ,genome
+sample1 ,      1 ,/zpool_1TB/home/eduard.perez/Genomes/ecoli/ASM584v2/GCF_000005845.2_ASM584v2_genomic.fna
+sample2 ,      2 ,/zpool_1TB/home/eduard.perez/Genomes/ecoli/ASM584v2/GCF_000005845.2_ASM584v2_genomic.fna
+sample3 ,      3 ,/zpool_1TB/home/eduard.perez/Genomes/ecoli/ASM584v2/GCF_000005845.2_ASM584v2_genomic.fna
+sample4 ,      4 ,/zpool_1TB/home/eduard.perez/Genomes/ecoli/ASM584v2/GCF_000005845.2_ASM584v2_genomic.fna
+sample5 ,      5 ,/zpool_1TB/home/eduard.perez/Genomes/ecoli/ASM584v2/GCF_000005845.2_ASM584v2_genomic.fna

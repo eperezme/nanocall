@@ -43,8 +43,8 @@ workflow NANOCALL {
         }
         .set { ch_fast5_files }
 
-    ch_input_path = Channel.fromPath(params.input_path, checkIfExists: true)
     ch_input = Channel.fromPath(params.input, checkIfExists: true)
+    ch_input_path = Channel.fromPath(params.input_path, checkIfExists: true)
     // Initialize channels for versions and MultiQC
     ch_versions = Channel.empty()
     ch_multiqc_files = Channel.empty()
@@ -59,6 +59,16 @@ workflow NANOCALL {
         def barcode = sample[2]
         tuple(barcode, id)
         }
+
+    // DEFINE SAMPLESHEET
+    ch_samples = Channel.fromPath(params.samplesheet, checkIfExists: true).splitCsv(header: true)
+    .map{ row ->
+        id = row.id
+        barcode = row.barcode
+        genome = row.genome
+        }
+
+
     //
     // MODULE: Run FAST5 to POD5 conversion
     //
@@ -94,6 +104,13 @@ workflow NANOCALL {
     ch_demuxed_fastq_files = DORADO_DEMUX.out.fastq
     ch_demuxed_summary = DORADO_DEMUX.out.summary
     ch_versions = ch_versions.mix(DORADO_DEMUX.out.versions)
+
+
+    ch_demuxed = Channel.empty()
+    ch_demuxed.
+
+
+
 
 
     ch_demuxed = ch_barcodes.join(
