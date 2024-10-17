@@ -63,10 +63,13 @@ workflow NANOCALL {
     // DEFINE SAMPLESHEET
     ch_samples = Channel.fromPath(params.samplesheet, checkIfExists: true).splitCsv(header: true)
     .map{ row ->
-        id = row.id
-        barcode = row.barcode
-        genome = row.genome
-        }
+            def meta = [
+                id : row.id,
+                barcode : row.barcode,
+                genome : row.genome
+                ]
+            def reads = [""]
+        [meta, reads]}
 
 
     //
