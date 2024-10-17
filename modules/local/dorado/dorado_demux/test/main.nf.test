@@ -1,0 +1,80 @@
+nextflow_process {
+
+    name "Test Process DORADO_DEMUX"
+    script "../main.nf"
+    process "DORADO_DEMUX"
+    tag "modules"
+    tag "modules_nfcore"
+    tag "dorado_demux"
+
+    test("test_demux_with_sample_sheet_and_kit") {
+
+        // Set up the necessary parameters for testing
+        setup {
+            run("BAM_INPUT") {
+                script "../../input/main.nf"
+                process {
+                """
+                input[0] = Channel.fromList([
+                                tuple([ id:'test1', single_end:false ], // meta map
+                                    file(params.test_data['bam_file'], checkIfExists: true))
+                            ])
+                """
+            }
+            }
+        }
+
+        // Set up process conditions
+        when {
+            process {
+                """
+                input[0] = BAM_INPUT.out.bam.collect{ meta, bam -> bam }.map{ bam -> [[ id: 'test_demux'], bam]}
+                """
+            }
+        }
+
+        // Define assertions to verify output
+        then {
+            assertAll(
+                { assert process.success },
+                { assert snapshot(process.out.bam).match() },
+                { assert snapshot(process.out.fastq).match() },
+                { assert snapshot(process.out.summary).match() },
+                { assert snapshot(process.out.versions).match() }
+            )
+        }
+    }
+
+    test("test_demux_without_sample_sheet") {
+        setup {
+            run("BAM_INPUT") {
+                script "../../input/main.nf"
+                process {
+                """
+                input[0] = Channel.fromList([
+                                tuple([ id:'test2', single_end:false ], // meta map
+                                    file(params.test_data['bam_file'], checkIfExists: true))
+                            ])
+                """
+            }
+            }
+        }
+
+        when {
+            process {
+                """
+                input[0] = BAM_INPUT.out.bam.collect{ meta, bam -> bam }.map{ bam -> [[ id: 'test_demux_no_sample'], bam]}
+                """
+            }
+        }
+
+        then {
+            assertAll(
+                { assert process.success },
+                { assert snapshot(process.out.bam).match() },
+                { assert snapshot(process.out.summary).match() },
+                { assert snapshot(process.out.versions).match() }
+            )
+        }
+    }
+}

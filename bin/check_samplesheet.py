@@ -12,7 +12,6 @@ def parse_args(args=None):
 
     parser = argparse.ArgumentParser(description=Description, epilog=Epilog)
     parser.add_argument("FILE_IN", help="Input samplesheet file.")
-    parser.add_argument("UPDATED_PATH", help="Input path for test_nobc_nodx_rnamod")
     parser.add_argument("FILE_OUT", help="Output file.")
     return parser.parse_args(args)
 
@@ -27,26 +26,14 @@ def make_dir(path):
 
 
 def print_error(error, context="Line", context_str=""):
-    error_str = "ERROR: Please check samplesheet -> {}".format(error)
-    if context != "" and context_str != "":
-        error_str = "ERROR: Please check samplesheet -> {}\n{}: '{}'".format(
-            error, context.strip(), context_str.strip()
-        )
+    error_str = f"ERROR: Please check samplesheet -> {error}"
+    if context and context_str:
+        error_str = f"ERROR: Please check samplesheet -> {error}\n{context}: '{context_str.strip()}'"
     print(error_str)
     sys.exit(1)
 
 
-def read_head(handle, num_lines=10):
-    """Read the specified number of lines from the current position in the file."""
-    lines = []
-    for idx, line in enumerate(handle):
-        if idx == num_lines:
-            break
-        lines.append(line)
-    return "".join(lines)
-
-
-def check_samplesheet(file_in, updated_path, file_out):
+def check_samplesheet(file_in, file_out):
     """
     This function checks that the samplesheet follows the following structure:
     sample,flowcell_id,barcode,genome
@@ -54,132 +41,67 @@ def check_samplesheet(file_in, updated_path, file_out):
     MCF8,FLO-MIN106,2,ASM584v2
     """
 
-    input_extensions = []
     sample_info_dict = {}
     with open(file_in, "r") as fin:
-        ## Check header
-        MIN_COLS = 3
+        # Check header
         HEADER = ["sample", "flowcell_id", "barcode", "genome"]
         header = fin.readline().strip().split(",")
-        if header[: len(HEADER)] != HEADER:
-            print("ERROR: Please check samplesheet header -> {} != {}".format(",".join(header), ",".join(HEADER)))
-            sys.exit(1)
+        if header != HEADER:
+            print_error(f"Header mismatch: {','.join(header)} != {','.join(HEADER)}")
 
-        ## Check sample entries
+        # Check sample entries
         for line in fin:
+            if not line.strip():
+                continue  # Skip empty lines
             lspl = [x.strip() for x in line.strip().split(",")]
 
-            ## Check valid number of columns per row
+            # Check valid number of columns per row
             if len(lspl) < len(HEADER):
-                print_error("Invalid number of columns (minimum = {})!".format(len(HEADER)), "Line", line)
+                print_error(f"Invalid number of columns (minimum = {len(HEADER)})!", "Line", line)
 
-            num_cols = len([x for x in lspl if x])
-            if num_cols < MIN_COLS:
-                print_error("Invalid number of populated columns (minimum = {})!".format(MIN_COLS), "Line", line)
-
-            ## Check sample name entries
+            # Extract values
             sample, flowcell, barcode, genome = lspl[: len(HEADER)]
-            if sample:
-                if sample.find(" ") != -1:
-                    print_error("Sample entry contains spaces!", "Line", line)
-            else:
-                print_error("Sample entry has not been specified!", "Line", line)
 
-            ## Check flowcell entry is integer
-            if flowcell:
-                if not flowcell.find(" ") != -1:
-                    print_error("Flowcell ID contains spaces!", "Line", line)
-            else:
-                print_error("Flowcell ID not specified!", "Line", line)
-            flowcell = str(flowcell)
+            # Check sample name entries
+            if not sample or " " in sample:
+                print_error("Sample entry is either missing or contains spaces!", "Line", line)
 
-            ## Check barcode entry
-            if barcode:
-                if not barcode.isdigit():
-                    print_error("Barcode entry is not an integer!", "Line", line)
-                else:
-                    barcode = "barcode%s" % (barcode.zfill(2))
+            # Check flowcell entry
+            if not flowcell or " " in flowcell:
+                print_error("Flowcell ID is either missing or contains spaces!", "Line", line)
 
-            ## Check genome entry
-            if genome:
-                if genome.find(" ") != -1:
-                    print_error("Genome entry contains spaces!", "Line", line)
-                if genome.endswith(".fastq.gz"):
-                    input_extensions.append("*.fastq.gz")
-                elif genome.endswith(".fq.gz"):
-                    input_extensions.append("*.fq.gz")
-                elif genome.endswith("*.mmi"):
-                    input_extensions.append("*.mmi")
-            
-            ## Check input file extension
-            # fast5 = ""
-            # if genome:
-            #     if genome.find(" ") != -1:
-            #         print_error("Input file contains spaces!", "Line", line)
-            #     if genome.endswith(".fastq.gz"):
-            #         input_extensions.append("*.fastq.gz")
-            #     elif genome.endswith(".fq.gz"):
-            #         input_extensions.append("*.fq.gz")
-            #     elif genome.endswith(".bam"):
-            #         input_extensions.append("*.bam")
-            #     else:
-            #         if updated_path != "not_changed":
-            #             genome = "/".join([updated_path, genome.split("/")[-1]])
-            #         list_dir = os.listdir(genome)
-            #         fast5 = genome
-            #         if not (all(fname.endswith(".fast5") for fname in list_dir)) and not (all(fname.endswith(".pod5") for fname in list_dir)):
-            #             if "fast5" in list_dir and "fastq" in list_dir:
-            #                 fast5 = genome + "/fast5"
-            #                 ## CHECK FAST5 DIRECTORY
-            #                 if not (all(fname.endswith(".fast5") for fname in os.listdir(fast5))):
-            #                     print_error("fast5 directory contains non-fast5 files.")
-            #                 ## CHECK PROVIDED BASECALLED FASTQ
-            #                 fastq_path = genome + "/fastq"
-            #                 basecalled_fastq = [
-            #                     fn for fn in os.listdir(fastq_path) if fn.endswith(".fastq.gz") or fn.endswith(".fq.gz")
-            #                 ]
-            #                 if len(basecalled_fastq) != 1:
-            #                     print_error("Please input one basecalled fastq per sample.")
-            #                 else:
-            #                     genome = fastq_path + "/" + basecalled_fastq[0]
-            #                     if not basecalled_fastq[0].endswith(".fastq.gz"):
-            #                         if not basecalled_fastq[0].endswith(".fq.gz"):
-            #                             print_error('basecalled fastq input does not end with ".fastq.gz" or ".fq.gz"')
-            #             else:
-            #                 print_error(
-            #                     '{genome} path does not end with ".fastq.gz", ".fq.gz", or ".bam" and is not an existing directory with correct fast5 and/or fastq inputs.'
-            #                 )
+            # Check barcode entry
+            if not barcode.isdigit():
+                print_error("Barcode entry is not an integer!", "Line", line)
 
-            ## Create sample mapping dictionary = {sample: {flowcell : [ barcode, genome ]}}
+            # Check genome entry
+            if not genome or " " in genome:
+                print_error("Genome entry is either missing or contains spaces!", "Line", line)
+
+            # Create sample mapping dictionary = {sample: {flowcell : [ barcode, genome ]}}
             sample_info = [barcode, genome]
             if sample not in sample_info_dict:
                 sample_info_dict[sample] = {}
             if flowcell not in sample_info_dict[sample]:
                 sample_info_dict[sample][flowcell] = sample_info
             else:
-                print_error("Same flowcell id provided multiple times!", "Line", line)
+                print_error("Same flowcell ID provided multiple times for the same sample!", "Line", line)
 
-    ## Write validated samplesheet with appropriate columns
-    if len(sample_info_dict) > 0:
+    # Write validated samplesheet with appropriate columns
+    if sample_info_dict:
         out_dir = os.path.dirname(file_out)
         make_dir(out_dir)
         with open(file_out, "w") as fout:
-            fout.write(",".join(["sample", "barcode", "reads"]) + "\n")
+            fout.write(",".join(["sample", "flowcell_id", "barcode", "genome"]) + "\n")
             for sample in sorted(sample_info_dict.keys()):
-                ## Check that flowcell ids are in format 1..<NUM_REPS>
-                uniq_rep_ids = set(sample_info_dict[sample].keys())
-                if len(uniq_rep_ids) != max(uniq_rep_ids):
-                    print_error("flowcell ids must start with 1..<num_flowcells>!", "sample", sample)
-
-                ### Write to file
                 for flowcell in sorted(sample_info_dict[sample].keys()):
-                    sample_id = "{}_R{}".format(sample, flowcell)
-                    fout.write(",".join([sample_id] + sample_info_dict[sample][flowcell]) + "\n")
+                    formatted_barcode = f"barcode{sample_info_dict[sample][flowcell][0].zfill(2)}"
+                    fout.write(",".join([sample, flowcell, formatted_barcode, sample_info_dict[sample][flowcell][1]]) + "\n")
 
 
 def main(args=None):
     args = parse_args(args)
-    check_samplesheet(args.FILE_IN, args.UPDATED_PATH, args.FILE_OUT)
+    check_samplesheet(args.FILE_IN, args.FILE_OUT)
 
 
 if __name__ == "__main__":
