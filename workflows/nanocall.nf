@@ -110,7 +110,7 @@ workflow NANOCALL {
             tuple(id, path)
         }
 
-    ch_demuxed.view()
+    // ch_demuxed.view()
 
     // MODULE: Compress FASTQ files
     if (params.fastq) {
@@ -121,6 +121,7 @@ workflow NANOCALL {
     //
     // MODULE: ToulligQC
     //
+
     TOULLIGQC (
         ch_summary_files,
         ch_pod5_folder,
