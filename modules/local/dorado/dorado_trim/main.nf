@@ -27,7 +27,7 @@ process DORADO_TRIM {
     // Handle parameters and arguments
     def args = task.ext.args ?: ''
     def prefix = task.ext.prefix ?: "${meta.id}"
-    if (params.fastq) { ftype = "fastq" } else { ftype = "bam" }
+    def ftype = (params.fastq) ? "fastq" : "bam" // TODO: Check if this is correct
 
     """
     dorado trim ${reads} > ${prefix}.$ftype
