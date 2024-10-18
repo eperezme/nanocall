@@ -60,18 +60,6 @@ workflow NANOCALL {
         tuple(barcode, id)
         }
 
-    // DEFINE SAMPLESHEET
-    ch_samples = Channel.fromPath(params.samplesheet, checkIfExists: true).splitCsv(header: true)
-    .map{ row ->
-            def meta = [
-                id : row.id,
-                barcode : row.barcode,
-                genome : row.genome
-                ]
-            def reads = [""]
-        [meta, reads]}
-
-
     //
     // MODULE: Run FAST5 to POD5 conversion
     //
@@ -109,13 +97,6 @@ workflow NANOCALL {
     ch_versions = ch_versions.mix(DORADO_DEMUX.out.versions)
 
 
-    ch_demuxed = Channel.empty()
-    ch_demuxed.
-
-
-
-
-
     ch_demuxed = ch_barcodes.join(
         ch_demuxed_bam_files.flatten()
         .map{ path ->
@@ -130,7 +111,20 @@ workflow NANOCALL {
             tuple(id, path)
         }
 
-    // ch_demuxed.view()
+    ch_sample = ch_sample.map{ sample ->
+        def meta = [
+            id : sample.id,
+            sample : sample.sample,
+            genome : sample.genome,
+            flowcell_id : sample.flowcell_id
+        ]
+        def reads = ch_demuxed_bam_files
+        return [meta, reads]
+    }
+
+    ch_sample.view()
+
+
 
     // MODULE: Compress FASTQ files
     if (params.fastq) {
