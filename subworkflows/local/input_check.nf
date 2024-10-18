@@ -28,6 +28,9 @@ workflow INPUT_CHECK {
 // Returns [ sample, input_file, barcode, fasta, gtf, is_transcripts, annotation_str, nanopolish_fast5 ]
 def get_sample_info(LinkedHashMap sample, LinkedHashMap genomeMap) {
     def meta = [:]
-    meta.id  = sample.sample
-    return [ meta, sample.flowcell_id, sample.barcode, sample.genome ]
+    meta.id = sample.barcode
+    meta.sample  = sample.sample
+    meta.genome = sample.genome
+    meta.flowcell_id = sample.flowcell_id
+    return [ meta ]
 }
