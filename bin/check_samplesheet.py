@@ -57,18 +57,26 @@ def check_samplesheet(file_in, file_out):
 
             # Check valid number of columns per row
             if len(lspl) < len(HEADER):
-                print_error(f"Invalid number of columns (minimum = {len(HEADER)})!", "Line", line)
+                print_error(
+                    f"Invalid number of columns (minimum = {len(HEADER)})!",
+                    "Line",
+                    line,
+                )
 
             # Extract values
             sample, flowcell, barcode, genome = lspl[: len(HEADER)]
 
             # Check sample name entries
             if not sample or " " in sample:
-                print_error("Sample entry is either missing or contains spaces!", "Line", line)
+                print_error(
+                    "Sample entry is either missing or contains spaces!", "Line", line
+                )
 
             # Check flowcell entry
             if not flowcell or " " in flowcell:
-                print_error("Flowcell ID is either missing or contains spaces!", "Line", line)
+                print_error(
+                    "Flowcell ID is either missing or contains spaces!", "Line", line
+                )
 
             # Check barcode entry
             if not barcode.isdigit():
@@ -76,7 +84,9 @@ def check_samplesheet(file_in, file_out):
 
             # Check genome entry
             if not genome or " " in genome:
-                print_error("Genome entry is either missing or contains spaces!", "Line", line)
+                print_error(
+                    "Genome entry is either missing or contains spaces!", "Line", line
+                )
 
             # Create sample mapping dictionary = {sample: {flowcell : [ barcode, genome ]}}
             sample_info = [barcode, genome]
@@ -85,7 +95,11 @@ def check_samplesheet(file_in, file_out):
             if flowcell not in sample_info_dict[sample]:
                 sample_info_dict[sample][flowcell] = sample_info
             else:
-                print_error("Same flowcell ID provided multiple times for the same sample!", "Line", line)
+                print_error(
+                    "Same flowcell ID provided multiple times for the same sample!",
+                    "Line",
+                    line,
+                )
 
     # Write validated samplesheet with appropriate columns
     if sample_info_dict:
@@ -95,8 +109,20 @@ def check_samplesheet(file_in, file_out):
             fout.write(",".join(["sample", "flowcell_id", "barcode", "genome"]) + "\n")
             for sample in sorted(sample_info_dict.keys()):
                 for flowcell in sorted(sample_info_dict[sample].keys()):
-                    formatted_barcode = f"barcode{sample_info_dict[sample][flowcell][0].zfill(2)}"
-                    fout.write(",".join([sample, flowcell, formatted_barcode, sample_info_dict[sample][flowcell][1]]) + "\n")
+                    formatted_barcode = (
+                        f"barcode{sample_info_dict[sample][flowcell][0].zfill(2)}"
+                    )
+                    fout.write(
+                        ",".join(
+                            [
+                                sample,
+                                flowcell,
+                                formatted_barcode,
+                                sample_info_dict[sample][flowcell][1],
+                            ]
+                        )
+                        + "\n"
+                    )
 
 
 def main(args=None):
