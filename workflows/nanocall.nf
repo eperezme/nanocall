@@ -118,7 +118,7 @@ workflow NANOCALL {
             genome : sample.genome,
             flowcell_id : sample.flowcell_id
         ]
-        def reads = ch_demuxed_bam_files
+        def reads = ch_demuxed_bam_files.flatten()
         return [meta, reads]
     }
 
