@@ -63,7 +63,11 @@ workflow NANOCALL {
         def barcode = sample[0].id
         tuple(barcode, meta)
         }
-
+    ch_indexes = ch_sample.map{ sample ->
+        def meta = sample[0]
+        def index = sample[0].genome
+        tuple(meta, index)
+        }
 
     //
     // MODULE: Run FAST5 to POD5 conversion
@@ -185,7 +189,8 @@ workflow NANOCALL {
     if (!params.skip_align) {
         if (!params.error_correction){
         DORADO_ALIGNER (
-            ch_trimmed
+            ch_trimmed,
+            ch_indexes
             )
         ch_aligned = DORADO_ALIGNER.out.bam
         ch_versions = ch_versions.mix(DORADO_ALIGNER.out.versions)
