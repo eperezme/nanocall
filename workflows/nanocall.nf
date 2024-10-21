@@ -22,6 +22,10 @@ include { TOULLIGQC         } from '../modules/nf-core/toulligqc/main'
 include { FAST5_TO_POD5     } from '../modules/local/pod5/fast5_to_pod5/main'
 include { DORADO_BASECALLER } from '../modules/local/dorado/dorado_basecaller/main'
 include { DORADO_DEMUX      } from '../modules/local/dorado/dorado_demux/main'
+include { DORADO_TRIM       } from '../modules/local/dorado/dorado_trim/main'
+include { DORADO_CORRECT    } from '../modules/local/dorado/dorado_correct/main'
+include { DORADO_ALIGNER      } from '../modules/local/dorado/dorado_aligner/main'
+
 include { PIGZ_COMPRESS     } from '../modules/nf-core/pigz/compress/main'
 include { INPUT_CHECK       } from '../subworkflows/local/input_check'
 /*
@@ -55,24 +59,11 @@ workflow NANOCALL {
 
     // Define the barcode channel
     ch_barcodes = ch_sample.map{ sample ->
-        def id = sample[0].sample
+        def meta = sample[0]
         def barcode = sample[0].id
-        tuple(barcode, id)
+        tuple(barcode, meta)
         }
 
-    // ch_barcodes.view()
-
-
-    // ch_sample = ch_sample.map{ sample ->
-    //     def meta = [
-    //         id : sample.id,
-    //         sample : sample.sample,
-    //         genome : sample.genome,
-    //         flowcell_id : sample.flowcell_id
-    //     ]
-    //     def reads = ch_demuxed_bam_files.flatten()
-    //     return [meta, reads]
-    // }
 
     //
     // MODULE: Run FAST5 to POD5 conversion
@@ -93,7 +84,6 @@ workflow NANOCALL {
         ch_pod5_folder
     )
 
-
     DORADO_BASECALLER.out.bam.collectFile(name: 'basecall.bam').set { ch_bam_files }
     DORADO_BASECALLER.out.fastq.collectFile(name: 'basecall.fastq.gz').set { ch_fastq_files }
     DORADO_BASECALLER.out.summary.collectFile(name: 'summary.tsv').set { ch_summary_files }
@@ -111,58 +101,106 @@ workflow NANOCALL {
     ch_versions = ch_versions.mix(DORADO_DEMUX.out.versions)
 
 
-    ch_demuxed = ch_barcodes.join(
+
+    if (params.fastq) {
+        ch_named_demuxed = ch_barcodes.join(
+            ch_demuxed_fastq_files.flatten()
+            .map{ path ->
+                def baseName = path.getBaseName()
+                def matcher = baseName =~ /_(barcode\d{2}|unclassified)$/
+                def barcode = matcher ? matcher[0][1] : baseName
+                tuple(barcode, path)
+            }, remainder: true)
+    }
+    else {
+    ch_named_demuxed = ch_barcodes.join(
         ch_demuxed_bam_files.flatten()
         .map{ path ->
             def baseName = path.getBaseName()
             def matcher = baseName =~ /_(barcode\d{2}|unclassified)$/
             def barcode = matcher ? matcher[0][1] : baseName
             tuple(barcode, path)
-        }, remainder: true
-        ).map{ meta ->
-            def id = meta[0]
-            def path = meta[2]
-            def sample = meta[1]
-            tuple(id, path)
+        }, remainder: true)
+    }
+
+    ch_demuxed = ch_sample.map{ sample ->
+        def barcode = sample[0].id
+        def meta = sample[0]
+        tuple (barcode, meta)
         }
-
-    //
-    // THE GOOD ONE
-    //
-    ch_sample.merge(ch_demuxed).map{ it ->
-        def meta = it[0]
-        def reads = it[3]
-        return [meta, reads]
-    }.set { ch_demuxed }
-
-
-
-
+        .join(ch_named_demuxed)
+        .map{ sample ->
+            def meta = sample[1]
+            def reads = sample[3]
+            return [meta, reads]
+            }
 
     // MODULE: Compress FASTQ files
     if (params.fastq) {
-        PIGZ_COMPRESS (ch_demuxed_fastq)
-    ch_demuxed_fastq = PIGZ_COMPRESS.out.archive
+        PIGZ_COMPRESS (ch_demuxed)
+    ch_demuxed = PIGZ_COMPRESS.out.archive
     ch_versions = ch_versions.mix(PIGZ_COMPRESS.out.versions)
     }
+    // ch_demuxed.view()
     //
     // MODULE: ToulligQC
     //
-
     TOULLIGQC (
         ch_summary_files,
         ch_pod5_folder,
         ch_bam_files
     )
+
+    ch_versions = ch_versions.mix(TOULLIGQC.out.versions)
+
     //
-    // MODULE: Run FastQC
+    // MODULE: Dorado trimming
     //
-    // Uncomment and adjust if FastQC is needed
-    /*
-    FASTQC(id, FAST5_TO_POD5.out.pod5)
-    ch_multiqc_files = ch_multiqc_files.mix(FASTQC.out.zip.collect{ it[1] })
-    ch_versions = ch_versions.mix(FASTQC.out.versions.first())
-    */
+    if (!params.skip_trimming) {
+    DORADO_TRIM (
+        ch_demuxed
+    )
+    ch_trimmed = DORADO_TRIM.out.bam
+    ch_versions = ch_versions.mix(DORADO_TRIM.out.versions)
+    if (params.fastq) {
+        ch_trimmed = DORADO_TRIM.out.fastq
+    }}
+
+    //
+    // MODULE: Dorado Correct
+    //
+
+    if (params.error_correction) {
+    DORADO_CORRECT (
+        ch_trimmed
+    )
+    ch_corrected = DORADO_CORRECT.out.fasta
+    ch_versions = ch_versions.mix(DORADO_CORRECT.out.versions)
+    }
+
+
+    //
+    // MODULE: Dorado Aligner
+    //
+    if (!params.skip_align) {
+        if (!params.error_correction){
+        DORADO_ALIGNER (
+            ch_trimmed
+            )
+        ch_aligned = DORADO_ALIGNER.out.bam
+        ch_versions = ch_versions.mix(DORADO_ALIGNER.out.versions)
+        }
+        else{
+            DORADO_ALIGNER (
+                ch_corrected
+                )
+            ch_aligned = DORADO_ALIGNER.out.bam
+            ch_versions = ch_versions.mix(DORADO_ALIGNER.out.versions)
+        }
+    }
+
+
+
 
     //
     // Collate and save software versions

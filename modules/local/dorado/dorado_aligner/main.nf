@@ -13,12 +13,11 @@ process DORADO_ALIGNER {
     // Define input channels: all POD5 files
     input:
     tuple val(meta), path(reads)
-    path index
 
     // Define output channels: BAM files, FASTQ files, summary, and versions
     output:
-    path "*.bam", emit: bam, optional: true
-    path "summary.tsv", emit: summary
+    path "aligned/*.bam", emit: bam, optional: true
+    path "aligned/summary.tsv", emit: summary
     path "versions.yml", emit: versions
 
     // Conditional execution based on task.ext.when
@@ -32,7 +31,7 @@ process DORADO_ALIGNER {
 
     """
     # Run the dorado aligner with the specified mode and arguments
-    dorado aligner --emit-summary ${additional_args} ${index} ${reads} > ${meta.id}_aligned.bam
+    dorado aligner --output-dir aligned/ --emit-summary ${meta.genome} ${reads}
 
     # Create a versions.yml file with the dorado version information
     cat <<-END_VERSIONS > versions.yml
