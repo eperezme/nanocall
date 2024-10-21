@@ -55,10 +55,24 @@ workflow NANOCALL {
 
     // Define the barcode channel
     ch_barcodes = ch_sample.map{ sample ->
-        def id = sample[0].id
-        def barcode = sample[2]
+        def id = sample[0].sample
+        def barcode = sample[0].id
         tuple(barcode, id)
         }
+
+    // ch_barcodes.view()
+
+
+    // ch_sample = ch_sample.map{ sample ->
+    //     def meta = [
+    //         id : sample.id,
+    //         sample : sample.sample,
+    //         genome : sample.genome,
+    //         flowcell_id : sample.flowcell_id
+    //     ]
+    //     def reads = ch_demuxed_bam_files.flatten()
+    //     return [meta, reads]
+    // }
 
     //
     // MODULE: Run FAST5 to POD5 conversion
@@ -106,23 +120,22 @@ workflow NANOCALL {
             tuple(barcode, path)
         }, remainder: true
         ).map{ meta ->
-            def id = meta[1]
+            def id = meta[0]
             def path = meta[2]
+            def sample = meta[1]
             tuple(id, path)
         }
 
-    ch_sample = ch_sample.map{ sample ->
-        def meta = [
-            id : sample.id,
-            sample : sample.sample,
-            genome : sample.genome,
-            flowcell_id : sample.flowcell_id
-        ]
-        def reads = ch_demuxed_bam_files.flatten()
+    //
+    // THE GOOD ONE
+    //
+    ch_sample.merge(ch_demuxed).map{ it ->
+        def meta = it[0]
+        def reads = it[3]
         return [meta, reads]
-    }
+    }.set { ch_demuxed }
 
-    ch_sample.view()
+
 
 
 
@@ -206,6 +219,7 @@ workflow NANOCALL {
     multiqc_report = MULTIQC.out.report.toList() // channel: /path/to/multiqc_report.html
     versions       = ch_versions                 // channel: [ path(versions.yml) ]
 }
+
 
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
