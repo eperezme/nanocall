@@ -14,7 +14,7 @@ process DORADO_CORRECT {
     tuple val(meta), path(reads)
 
     output:
-    path "*.fasta", emit: fasta
+    tuple val(meta), path("*.fasta"), emit: fasta
     path "versions.yml", emit: versions
 
     // Conditional execution based on task.ext.when

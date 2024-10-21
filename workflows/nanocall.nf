@@ -180,32 +180,38 @@ workflow NANOCALL {
     )
     ch_corrected = DORADO_CORRECT.out.fasta
     ch_versions = ch_versions.mix(DORADO_CORRECT.out.versions)
+    // Add index to the input channel for alignment
+    ch_prealign = ch_corrected.map{ sample ->
+        def meta = sample[0]
+        def reads = sample[1]
+        def index = sample[0].genome
+        return [meta, reads, index]
+        }
     }
 
+// Add index to the input channel for alignment
+    if (!params.error_correction) {
+    ch_prealign = ch_trimmed.map{ sample ->
+        def meta = sample[0]
+        def reads = sample[1]
+        def index = sample[0].genome
+        return [meta, reads, index]
+        }
+    }
 
     //
     // MODULE: Dorado Aligner
     //
     if (!params.skip_align) {
-        if (!params.error_correction){
         DORADO_ALIGNER (
-            ch_trimmed,
-            ch_indexes
+            ch_prealign
             )
         ch_aligned = DORADO_ALIGNER.out.bam
         ch_versions = ch_versions.mix(DORADO_ALIGNER.out.versions)
-        }
-        else{
-            DORADO_ALIGNER (
-                ch_corrected
-                )
-            ch_aligned = DORADO_ALIGNER.out.bam
-            ch_versions = ch_versions.mix(DORADO_ALIGNER.out.versions)
-        }
     }
 
 
-
+    ch_aligned.view()
 
     //
     // Collate and save software versions
