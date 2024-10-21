@@ -99,35 +99,24 @@ workflow NANOCALL {
     DORADO_DEMUX (
         ch_bam_files
     )
-    ch_demuxed_bam_files = DORADO_DEMUX.out.bam
-    ch_demuxed_fastq_files = DORADO_DEMUX.out.fastq
+
+    if (params.fastq) {ch_demuxed_files = DORADO_DEMUX.out.fastq}
+    else {ch_demuxed_files = DORADO_DEMUX.out.bam}
     ch_demuxed_summary = DORADO_DEMUX.out.summary
     ch_versions = ch_versions.mix(DORADO_DEMUX.out.versions)
 
 
-
-    if (params.fastq) {
-        ch_named_demuxed = ch_barcodes.join(
-            ch_demuxed_fastq_files.flatten()
-            .map{ path ->
-                def baseName = path.getBaseName()
-                def matcher = baseName =~ /_(barcode\d{2}|unclassified)$/
-                def barcode = matcher ? matcher[0][1] : baseName
-                tuple(barcode, path)
-            }, remainder: true)
-    }
-    else {
-    ch_named_demuxed = ch_barcodes.join(
-        ch_demuxed_bam_files.flatten()
+    ch_barcodes.join(
+        ch_demuxed_files.flatten()
         .map{ path ->
             def baseName = path.getBaseName()
             def matcher = baseName =~ /_(barcode\d{2}|unclassified)$/
             def barcode = matcher ? matcher[0][1] : baseName
             tuple(barcode, path)
         }, remainder: true)
-    }
+        .set { ch_named_demuxed}
 
-    ch_demuxed = ch_sample.map{ sample ->
+    ch_sample.map{ sample ->
         def barcode = sample[0].id
         def meta = sample[0]
         tuple (barcode, meta)
@@ -138,6 +127,7 @@ workflow NANOCALL {
             def reads = sample[3]
             return [meta, reads]
             }
+        .set { ch_demuxed }
 
     // MODULE: Compress FASTQ files
     if (params.fastq) {
