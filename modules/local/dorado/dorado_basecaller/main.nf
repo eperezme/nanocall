@@ -16,9 +16,9 @@ process DORADO_BASECALLER {
 
     // Define output channels: BAM files, FASTQ files, summary, and versions
     output:
-    path "*.bam", emit: bam, optional: true
-    path "*.fastq.gz", emit: fastq, optional: true
-    path "summary.tsv", emit: summary
+    path "basecaller/*.bam", emit: bam, optional: true
+    path "basecaller/*.fastq.gz", emit: fastq, optional: true
+    path "basecaller/summary.tsv", emit: summary
     path "versions.yml", emit: versions
 
     // Conditional execution based on task.ext.when
@@ -37,25 +37,26 @@ process DORADO_BASECALLER {
     def dorado_model = params.modified_bases ? "${params.model},${params.modified_bases}" : "${params.model}"
 
     // Initialize emit_args and additional_args based on parameters
-    def emit_args = "> basecall.bam"
+    def emit_args = "> basecaller/basecall.bam"
     def additional_args = ""
-    def outfile = "basecall.bam"
+    def outfile = "basecaller/basecall.bam"
 
-    if (params.error_correction == true || (params.emit_fastq == true)) {
-        emit_args = "> basecall.fastq"
-        outfile = "basecall.fastq"
+    if (params.error_correction == true || (params.fastq == true)) {
+        emit_args = "> basecaller/basecall.fastq"
+        outfile = "basecaller/basecall.fastq"
         additional_args += " --emit-fastq"
     }
     """
+    mkdir -p basecaller
     # Run the dorado basecaller with the specified mode and arguments
     dorado ${mode} ${dorado_model} ${additional_args} --no-trim pod5_dir/ ${emit_args}
 
     # Create the summary file
-    dorado summary $outfile > summary.tsv
+    dorado summary $outfile > basecaller/summary.tsv
 
     # gzip the fastq file if it exists
-    if [ -f basecall.fastq ]; then
-        gzip -k basecall.fastq
+    if [ -f basecaller/basecall.fastq ]; then
+        gzip -k basecaller/basecall.fastq
     fi
 
     # Create a versions.yml file with the dorado version information

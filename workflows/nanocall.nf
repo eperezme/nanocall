@@ -69,9 +69,12 @@ workflow NANOCALL {
         tuple(meta, index)
         }
 
-    //
-    // MODULE: Run FAST5 to POD5 conversion
-    //
+
+
+//////////////////////////////////////////////////////////////////////
+//          MODULE: Run FAST5 to POD5 conversion
+//////////////////////////////////////////////////////////////////////
+
     FAST5_TO_POD5 (
         ch_fast5_files
     )
@@ -81,23 +84,35 @@ workflow NANOCALL {
     ch_versions = ch_versions.mix(FAST5_TO_POD5.out.versions)
     // ch_multiqc_files = ch_multiqc_files.mix(FAST5_TO_POD5.out.pod5)
 
-    //
-    // MODULE: Run Dorado basecaller
-    //
+
+
+
+//////////////////////////////////////////////////////////////////////
+//              MODULE: Run Dorado basecaller
+//////////////////////////////////////////////////////////////////////
+
     DORADO_BASECALLER (
         ch_pod5_folder
     )
 
-    DORADO_BASECALLER.out.bam.collectFile(name: 'basecall.bam').set { ch_bam_files }
-    DORADO_BASECALLER.out.fastq.collectFile(name: 'basecall.fastq.gz').set { ch_fastq_files }
-    DORADO_BASECALLER.out.summary.collectFile(name: 'summary.tsv').set { ch_summary_files }
+    ch_bam_files = DORADO_BASECALLER.out.bam.collectFile(name: 'basecall.bam')
+    ch_fastq_files = DORADO_BASECALLER.out.fastq.collectFile(name: 'basecall.fastq.gz')
+    ch_summary_files = DORADO_BASECALLER.out.summary.collectFile(name: 'summary.tsv')
     ch_versions = ch_versions.mix(DORADO_BASECALLER.out.versions)
 
-    //
-    // MODULE: Dorado demultiplexing
-    //
+    if (params.fastq == true ) {
+        ch_basecalled = ch_fastq_files
+    } else {
+        ch_basecalled = ch_bam_files
+    }
+
+
+//////////////////////////////////////////////////////////////////////
+//              MODULE: Dorado demultiplexing
+//////////////////////////////////////////////////////////////////////
+    if (params.skip_demux == false) {
     DORADO_DEMUX (
-        ch_bam_files
+        ch_basecalled
     )
 
     if (params.fastq) {ch_demuxed_files = DORADO_DEMUX.out.fastq}
@@ -129,28 +144,44 @@ workflow NANOCALL {
             }
         .set { ch_demuxed }
 
-    // MODULE: Compress FASTQ files
-    if (params.fastq) {
+
+//////////////////////////////////////////////////////////////////////
+//              MODULE: PIGZ_COMPRESS
+//////////////////////////////////////////////////////////////////////
+    if (params.fastq == true) {
         PIGZ_COMPRESS (ch_demuxed)
     ch_demuxed = PIGZ_COMPRESS.out.archive
     ch_versions = ch_versions.mix(PIGZ_COMPRESS.out.versions)
     }
-    // ch_demuxed.view()
-    //
-    // MODULE: ToulligQC
-    //
+
+    } else {
+        ch_demuxed = ch_basecalled.map{ read ->
+        def meta = [:]
+        meta.id = 'unclassified'
+        meta.genome = 'no-genome'
+        meta.sample = 'unclassified'
+        def reads = read
+        return [meta, reads]}
+        // ch_demuxed.view()
+    }
+
+//////////////////////////////////////////////////////////////////////
+//               MODULE: ToulligQC
+//////////////////////////////////////////////////////////////////////
+
     TOULLIGQC (
         ch_summary_files,
         ch_pod5_folder,
-        ch_bam_files
+        ch_basecalled
     )
-
     ch_versions = ch_versions.mix(TOULLIGQC.out.versions)
 
-    //
-    // MODULE: Dorado trimming
-    //
-    if (!params.skip_trimming) {
+
+//////////////////////////////////////////////////////////////////////
+//                  MODULE: Dorado trimming
+//////////////////////////////////////////////////////////////////////
+
+    if (params.skip_trimming == false) {
     DORADO_TRIM (
         ch_demuxed
     )
@@ -160,9 +191,25 @@ workflow NANOCALL {
         ch_trimmed = DORADO_TRIM.out.fastq
     }}
 
-    //
-    // MODULE: Dorado Correct
-    //
+
+//////////////////////////////////////////////////////////////////////
+//              MODULE: FASTQC
+//////////////////////////////////////////////////////////////////////
+
+    FASTQC (
+        ch_trimmed
+    )
+
+    ch_fastqc = FASTQC.out.html
+    ch_fastqc_zip = FASTQC.out.zip
+    ch_versions = ch_versions.mix(FASTQC.out.versions)
+
+
+
+//////////////////////////////////////////////////////////////////////
+//           MODULE: Dorado Correct
+//////////////////////////////////////////////////////////////////////
+
 
     if (params.error_correction) {
     DORADO_CORRECT (
@@ -189,9 +236,9 @@ workflow NANOCALL {
         }
     }
 
-    //
-    // MODULE: Dorado Aligner
-    //
+//////////////////////////////////////////////////////////////////////
+//              MODULE: Dorado Aligner
+//////////////////////////////////////////////////////////////////////
     if (!params.skip_align) {
         DORADO_ALIGNER (
             ch_prealign
@@ -201,7 +248,6 @@ workflow NANOCALL {
     }
 
 
-    ch_aligned.view()
 
     //
     // Collate and save software versions
@@ -214,9 +260,13 @@ workflow NANOCALL {
             newLine: true
         ).set { ch_collated_versions }
 
-    //
-    // MODULE: MultiQC
-    //
+
+
+
+//////////////////////////////////////////////////////////////////////
+//               MODULE: MultiQC
+//////////////////////////////////////////////////////////////////////
+
     ch_multiqc_config        = Channel.fromPath(
         "$projectDir/assets/multiqc_config.yml", checkIfExists: true)
     ch_multiqc_custom_config = params.multiqc_config ?

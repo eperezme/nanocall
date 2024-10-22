@@ -57,3 +57,24 @@ dorado correct $sample.fastq > $sample.fasta
 dorado aligner -o aligned/ --bed-file --emit-summary --mm2-opts "" index
 # Multiple BAM OUT
 ```
+
+
+## Presets
+
+Maybe a good idea is to have a list of presets for toggling the different options and thus produce the desired output.
+
+The presets could be:
+- **Methylation call**: Basecalling with modifications, demultiplexing, trimming and aligning. All files should be BAM since the methylation information is saved in BAM tags.
+
+- **Denovo Assembling**: Basecalling, demultiplexing, trimming and CORRECTING. All files should be FASTA since the correcting step works with FASTQ and produces FASTA files.
+
+- **Mapping**: Basecalling, demultiplexing, trimming and aligning. All files should be BAM since the ending step is the alignment that produces BAM files.
+
+
+
+# TODO
+- [ ] Add the methylation preset
+- [ ] Add the denovo assembling preset
+- [ ] Add the mapping preset
+- [ ] Add the MultiQC data to the MultiQC module report
+- [ ] Add alignment QC to the pipeline
