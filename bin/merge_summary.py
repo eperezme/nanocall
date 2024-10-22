@@ -1,5 +1,10 @@
 import pandas as pd
 
+# TODO - Create a function for this code
+# Inputs: basecall_summary, barcoding_summary, folder with alignment summaries
+# Outputs: final_summary
+
+
 # Load basecalling summary file
 basecall_summary = pd.read_csv("../basecall_summary.tsv", sep="\t")
 
