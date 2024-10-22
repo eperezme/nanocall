@@ -32,6 +32,15 @@ process DORADO_TRIM {
     if (params.fastq) {
         additional_args += "--emit-fastq "
     }
+    if (params.no_trim_primers) {
+        additional_args += "--no-trim-primers "
+    }
+    if (params.primer_sequences) {
+        additional_args += "--primer-sequences ${params.primer_sequences} "
+    }
+    if (params.read_ids) {
+        additional_args += "--read-ids ${params.read_ids} "
+    }
 
     """
     mkdir -p trimmed
