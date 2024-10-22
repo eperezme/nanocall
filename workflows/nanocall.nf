@@ -168,9 +168,10 @@ workflow NANOCALL {
 //////////////////////////////////////////////////////////////////////
 //               MODULE: ToulligQC
 //////////////////////////////////////////////////////////////////////
-
+    ch_summary = ch_summary_files.mix(DORADO_DEMUX.out.summary)
+    ch_summary.view()
     TOULLIGQC (
-        ch_summary_files,
+        ch_summary,
         ch_pod5_folder,
         ch_basecalled
     )
@@ -189,7 +190,9 @@ workflow NANOCALL {
     ch_versions = ch_versions.mix(DORADO_TRIM.out.versions)
     if (params.fastq) {
         ch_trimmed = DORADO_TRIM.out.fastq
-    }}
+    }} else {
+        ch_trimmed = ch_demuxed
+    }
 
 
 //////////////////////////////////////////////////////////////////////

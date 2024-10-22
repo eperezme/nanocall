@@ -11,6 +11,7 @@ process TOULLIGQC {
     path(summary)
     path(pod5_dir, stageAs: 'pod5_dir/*')
     path(ontfile)
+    
 
 
     output:
@@ -31,6 +32,7 @@ process TOULLIGQC {
         ("$ontfile".endsWith(".txt") || "$ontfile".endsWith(".txt.gz")) ? "--sequencing-summary-source ${ontfile}" :
         ("$ontfile".endsWith(".bam")) ? "--bam ${ontfile}" : ''
 
+    def summary = ''
     """
     toulligqc \\
         $input_file \\
